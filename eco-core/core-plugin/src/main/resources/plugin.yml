@@ -7,8 +7,8 @@ website: willfp.com
 load: STARTUP
 depend:
   - eco
-softdepend:
   - libreforge
+softdepend:
   - CMI
   - EssentialsX
 
