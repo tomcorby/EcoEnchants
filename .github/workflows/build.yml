@@ -1,10 +1,11 @@
 name: Build EcoEnchants
 
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-  workflow_dispatch: # allows manual triggering
+  workflow_run:
+    workflows: ["Sync from upstream"]
+    types:
+      - completed
+
 
 jobs:
   build:
