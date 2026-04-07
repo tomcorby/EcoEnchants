@@ -5,7 +5,7 @@ on:
     workflows: ["Sync from upstream"]
     types:
       - completed
-
+  workflow_dispatch:
 
 jobs:
   build:
