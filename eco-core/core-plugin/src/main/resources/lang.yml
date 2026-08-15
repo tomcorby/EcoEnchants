@@ -20,8 +20,36 @@ messages:
 
 
 all: "All"
-yes: "&aYes"
-no: "&cNo"
+"yes": "&aYes"
+"no": "&cNo"
 no-conflicts: "No Conflicts"
 all-conflicts: "All Other Enchantments"
 no-required: "No Requirements"
+
+tradeable:
+  "true": "&aYes"
+  "false": "&cNo"
+
+enchantable:
+  "true": "&aYes"
+  "false": "&cNo"
+
+drag-and-drop:
+  "true": "&aYes"
+  "false": "&cNo"
+
+discoverable:
+  "true": "&aYes"
+  "false": "&cNo"
+  chests:
+    "true": "&aYes"
+    "false": "&cNo"
+  fishing:
+    "true": "&aYes"
+    "false": "&cNo"
+  mob-drops:
+    "true": "&aYes"
+    "false": "&cNo"
+  raids:
+    "true": "&aYes"
+    "false": "&cNo"

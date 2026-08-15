@@ -9,7 +9,6 @@ import com.willfp.eco.core.placeholder.context.placeholderContext
 import com.willfp.eco.util.NumberUtils
 import com.willfp.ecoenchants.EcoEnchantsPlugin
 import com.willfp.ecoenchants.display.DescriptionPlaceholder
-import com.willfp.ecoenchants.mechanics.infiniteIfNegative
 import com.willfp.ecoenchants.rarity.EnchantmentRarity
 import com.willfp.ecoenchants.type.EnchantmentType
 import org.bukkit.Material
@@ -44,6 +43,11 @@ interface EcoEnchantLike {
     val rawDisplayName: String
 
     /**
+     * The (optional) name translation key
+     */
+    val nameTranslationKey: String?
+
+    /**
      * The enchantment type.
      */
     val type: EnchantmentType
@@ -60,14 +64,9 @@ interface EcoEnchantLike {
         item: ItemStack,
         additionalEnchantments: Collection<Enchantment> = emptyList()
     ): Boolean {
-        val enchants = (item.fast().getEnchants(true).keys + additionalEnchantments)
-            .distinctBy { it.key }
+        val enchants = item.fast().getEnchants(true).keys + additionalEnchantments
 
-        if (
-            enchants
-                .map { it.wrap() }
-                .count { it.type == this.type } >= this.type.limit
-        ) {
+        if (enchants.count { it.wrap().type == this.type } >= this.type.limit) {
             return false
         }
 

@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+﻿import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     kotlin("jvm") version "2.3.0"
@@ -12,6 +12,7 @@ plugins {
 group = "com.willfp"
 version = findProperty("version")!!
 val libreforgeVersion = findProperty("libreforge-version")
+val ecoVersion = findProperty("eco-version")
 
 base {
     archivesName.set(project.name)
@@ -19,14 +20,71 @@ base {
 
 dependencies {
     implementation(project(":eco-core:core-plugin"))
-    implementation(project(":eco-core:core-nms:v1_21_4", configuration = "reobf"))
-    implementation(project(":eco-core:core-nms:v1_21_5", configuration = "reobf"))
-    implementation(project(":eco-core:core-nms:v1_21_6", configuration = "reobf"))
-    implementation(project(":eco-core:core-nms:v1_21_7", configuration = "reobf"))
     implementation(project(":eco-core:core-nms:v1_21_8", configuration = "reobf"))
     implementation(project(":eco-core:core-nms:v1_21_10", configuration = "reobf"))
     implementation(project(":eco-core:core-nms:v1_21_11", configuration = "reobf"))
     implementation(project(":eco-core:core-nms:v26_1_1", configuration = "shadow"))
+    implementation(project(":eco-core:core-nms:v26_1_2", configuration = "shadow"))
+    implementation(project(":eco-core:core-nms:v26_2", configuration = "shadow"))
+}
+
+publishing {
+    publications {
+        // maven-private: only the shaded jar
+        create<MavenPublication>("private") {
+            artifactId = rootProject.name
+        }
+        // maven-releases (served publicly via the maven-public group): the API jar
+        create<MavenPublication>("release") {
+            artifactId = rootProject.name
+        }
+    }
+    repositories {
+        maven {
+            name = "Auxilor"
+            url = uri("https://repo.auxilor.io/repository/maven-private/")
+            credentials {
+                username = System.getenv("MAVEN_USERNAME")
+                password = System.getenv("MAVEN_PASSWORD")
+            }
+        }
+        maven {
+            name = "AuxilorReleases"
+            url = uri("https://repo.auxilor.io/repository/maven-releases/")
+            credentials {
+                username = System.getenv("MAVEN_USERNAME")
+                password = System.getenv("MAVEN_PASSWORD")
+            }
+        }
+    }
+}
+
+// Neither publication is attached to a software component, so only the single jar
+// and its pom are published - no sources, javadoc, or classified variants.
+afterEvaluate {
+    publishing.publications.named<MavenPublication>("private") {
+        artifact(tasks.named("libreforgeJar"))
+    }
+    // The public artifact is what other plugins compile against, so it must be the
+    // plain jar, not shadowJar: shadowJar drops META-INF (taking the .kotlin_module
+    // with it, which hides every top-level declaration from the Kotlin compiler) and
+    // relocates kotlin.* into com.willfp.eco.libs.kotlin, which rewrites @kotlin.Metadata
+    // and makes the whole API read as Java. eco publishes its API the same way.
+    publishing.publications.named<MavenPublication>("release") {
+        artifact(project(":eco-core:core-plugin").tasks.named<Jar>("jar")) {
+            classifier = ""
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("generatePomFileFor") }.configureEach {
+    mustRunAfter(tasks.named("clean"))
+}
+tasks.register("publishToAuxilor") {
+    dependsOn(
+        "publishPrivatePublicationToAuxilorRepository",
+        "publishReleasePublicationToAuxilorReleasesRepository",
+    )
 }
 
 allprojects {
@@ -50,13 +108,22 @@ allprojects {
     }
 
     dependencies {
-        compileOnly("com.willfp:eco:7.0.0")
+        compileOnly("com.willfp:eco:$ecoVersion")
         compileOnly("org.jetbrains:annotations:26.0.2")
         compileOnly("org.jetbrains.kotlin:kotlin-stdlib:2.3.0")
         compileOnly("com.github.ben-manes.caffeine:caffeine:3.2.3")
+
+        testImplementation("com.willfp:eco:$ecoVersion")
+        testImplementation("org.junit.jupiter:junit-jupiter-api:6.0.3")
+        testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.0.3")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.3")
     }
 
     tasks {
+        test {
+            useJUnitPlatform()
+        }
+
         shadowJar {
             exclude("META-INF/**")
             relocate("com.willfp.libreforge.loader", "com.willfp.ecoenchants.libreforge.loader")
@@ -67,6 +134,12 @@ allprojects {
         }
 
         compileKotlin {
+            compilerOptions {
+                jvmTarget.set(JvmTarget.JVM_21)
+            }
+        }
+
+        compileTestKotlin {
             compilerOptions {
                 jvmTarget.set(JvmTarget.JVM_21)
             }
@@ -99,7 +172,6 @@ allprojects {
     }
 
     java {
-        withSourcesJar()
         toolchain {
             languageVersion = JavaLanguageVersion.of(25)
         }

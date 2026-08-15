@@ -12,6 +12,8 @@ fun Enchantment.wrap(): EcoEnchantLike {
         return this
     }
 
+    EcoEnchants.getByID(this.key.key)?.let { return it }
+
     return ecoEnchantLikes.getOrPut(this.key) {
         VanillaEcoEnchantLike(this, plugin)
     }
@@ -20,3 +22,5 @@ fun Enchantment.wrap(): EcoEnchantLike {
 fun Enchantment.conflictsWithDeep(other: Enchantment): Boolean {
     return this.conflictsWith(other) || other.conflictsWith(this)
 }
+
+internal fun Int.infiniteIfNegative() = if (this < 1) Int.MAX_VALUE else this

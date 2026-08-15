@@ -26,6 +26,7 @@ loot:
 
 # Options for merging items in an anvil
 anvil:
+  vanilla-costs: false # If true, uses only vanilla XP costs (ignores cost-exponent). Custom enchants still work.
   cost-exponent: 0.95 # The exponent for each enchant level to prevent constant "Too Expensive!" problems
   enchant-limit: -1 # The limit for the amount of enchantments on an item (-1 to disable)
   use-rework-penalty: true # If the rework penalty should be applied
@@ -44,7 +45,7 @@ display:
     enabled: true # If numerals should be used for the enchantment levels
     threshold: 10 # Above this, numbers will be used instead of numerals
 
-  # Options for not met lines: https://plugins.auxilor.io/effects/configuring-a-condition#example-condition-config
+  # Options for not met lines: https://hub.auxilor.io/wiki/libreforge/configuring-a-condition#example-condition-config
   not-met:
     format: "<strikethrough>" # Enchantments with any not-met-lines active will have this format added to them
 
@@ -107,14 +108,23 @@ enchantinfo:
       - "&fApplicable to: &a%targets%"
       - "&fConflicts with: &a%conflicts%"
       - "&fRequires: &a%required%"
+      - ""
+      - "&fTradeable: &a%tradeable%"
+      - "&fDiscoverable: &a%discoverable%"
+      - "&fDiscoverable (Chests): &a%discoverable_chests%"
+      - "&fDiscoverable (Fishing): &a%discoverable_fishing%"
+      - "&fDiscoverable (Mob Drops): &a%discoverable_mob_drops%"
+      - "&fDiscoverable (Raids): &a%discoverable_raids%"
+      - "&fEnchantable: &a%enchantable%"
+      - "&fDrag and Drop: &a%drag_and_drop%"
 
-  # Custom GUI slots; see here for a how-to: https://plugins.auxilor.io/all-plugins/custom-gui-slots
+  # Custom GUI slots; see here for a how-to: https://hub.auxilor.io/wiki/eco/pages#custom-gui-slots
   custom-slots: [ ]
 
 # Options for the enchant GUI.
 enchant-gui:
   rows: 6 # How many rows to have in the GUI
-  title: "Enchant GUI" # The title of the GUI
+  title: "Enchant GUI &7(%page%/%max_page%)" # The title of the GUI
 
   mask: # The background material
     items:
@@ -146,12 +156,20 @@ enchant-gui:
 
   # Options for the page change buttons
   page-change:
+    # The sound played when the page is changed
+    sound:
+      enabled: true
+      sound: ui.button.click
+      pitch: 1.0
+      volume: 1.0
     forwards:
       item: arrow name:"&fNext Page" # The item. Will not show if on the last page.
+      item-inactive: gray_dye name:"&7Next Page" # The item shown on the last page
       row: 6
       column: 6
     backwards:
       item: arrow name:"&fPrevious Page" # The item. Will not show if on the first page.
+      item-inactive: gray_dye name:"&7Previous Page" # The item shown on the first page
       row: 6
       column: 4
 
@@ -171,8 +189,73 @@ enchant-gui:
     row: 3 # The row of the top-left corner of the area
     column: 2 # The column of the top-left corner of the area
 
-  # Custom GUI slots; see here for a how-to: https://plugins.auxilor.io/all-plugins/custom-gui-slots
+  # Custom GUI slots; see here for a how-to: https://hub.auxilor.io/wiki/eco/pages#custom-gui-slots
   custom-slots: [ ]
+
+  # If enabled, /enchant opens a group selection menu first, grouping enchantments
+  # by the group-by setting. If disabled, /enchant opens the flat enchantment list (current behavior).
+  grouped: false
+
+  # What to group enchantments by. Only used when grouped is true.
+  # Options: type (from types.yml), rarity (from rarity.yml), target (from targets.yml)
+  group-by: type
+
+  # Back button to return from a filtered sub-menu to the group selection menu.
+  # Only shown when grouped is true.
+  back-button:
+    enabled: true
+    item: arrow name:"&fBack to Groups"
+    lore: []
+    row: 6
+    column: 1
+
+# Options for the group selection GUI (only used when enchant-gui.grouped is true)
+group-gui:
+  rows: 3
+  title: "Enchantment Groups"
+
+  mask:
+    items:
+      - black_stained_glass_pane
+    pattern:
+      - "111111111"
+      - "100000001"
+      - "111111111"
+
+  # Each group must have a unique id matching an entry from the file corresponding
+  # to the group-by setting:
+  #   group-by: type   -> IDs from types.yml   (normal, spell, special, curse)
+  #   group-by: rarity -> IDs from rarity.yml  (common, uncommon, rare, epic, legendary, special, veryspecial)
+  #   group-by: target -> IDs from targets.yml (sword, pickaxe, helmet, bow, etc.)
+  # Groups with unrecognized IDs are silently ignored.
+  groups:
+    - id: normal
+      item: enchanted_book name:"&7Normal Enchantments"
+      lore:
+        - "&fClick to browse normal enchantments"
+      row: 2
+      column: 2
+    - id: spell
+      item: enchanted_book name:"<gradient:#0575E6:#1E3FBA>Spell Enchantments"
+      lore:
+        - "&fClick to browse spell enchantments"
+      row: 2
+      column: 4
+    - id: special
+      item: enchanted_book name:"<gradient:#FB57EC:#EF1DEC>Special Enchantments"
+      lore:
+        - "&fClick to browse special enchantments"
+      row: 2
+      column: 6
+    - id: curse
+      item: enchanted_book name:"&cCurse Enchantments"
+      lore:
+        - "&fClick to browse curse enchantments"
+      row: 2
+      column: 8
+
+  # Custom GUI slots; see here for a how-to: https://hub.auxilor.io/wiki/eco/pages#custom-gui-slots
+  custom-slots: []
 
 # Options for converting lore-based enchants (from other plugins) with EcoEnchants enchantments
 # with the same names. If you're switching over from another plugin and don't want your players to

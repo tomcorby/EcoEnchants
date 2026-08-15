@@ -23,42 +23,55 @@ object CommandEnchantInfo : PluginCommand(
             return
         }
 
-        val nameBuilder = StringBuilder()
-
-        args.forEach { arg -> nameBuilder.append(arg).append(" ") }
-        var searchName = nameBuilder.toString()
-        searchName = searchName.substring(0, searchName.length - 1)
+        val level = if (args.size > 1) args.last().toIntOrNull() else null
+        val nameArgs = if (level != null) args.dropLast(1) else args
+        val searchName = nameArgs.joinToString(" ")
 
         val enchantment = EcoEnchants.getByName(searchName)
 
-        if (enchantment == null) {
+        if (enchantment == null || (enchantment.isHiddenFromGui && !sender.hasPermission("ecoenchants.seehidden"))) {
             val message = plugin.langYml.getMessage("not-found").replace("%name%", searchName)
             sender.sendMessage(message)
             return
         }
 
-        EnchantGUI.openInfoGUI(sender, enchantment)
+        EnchantGUI.openInfoGUI(sender, enchantment, level ?: -1)
     }
 
     override fun tabComplete(sender: CommandSender, args: List<String>): List<String> {
         val completions = mutableListOf<String>()
 
+        val canSeeHidden = sender.hasPermission("ecoenchants.seehidden")
         @Suppress("DEPRECATION")
-        val names = EcoEnchants.values().mapNotNull { org.bukkit.ChatColor.stripColor(it.getFormattedName(0)) }
+        val names = EcoEnchants.values().filter { !it.isHiddenFromGui || canSeeHidden }.mapNotNull { org.bukkit.ChatColor.stripColor(it.getFormattedName(0)) }
 
         if (args.isEmpty()) {
             // Currently, this case is not ever reached
             return names
         }
 
+        // If all args except the last form a complete enchant name, suggest level numbers
+        if (args.size > 1) {
+            val namePrefix = args.dropLast(1).joinToString(" ")
+            val matched = EcoEnchants.getByName(namePrefix)
+            if (matched != null && (!matched.isHiddenFromGui || canSeeHidden)) {
+                val levels = (1..matched.maximumLevel).map { it.toString() }
+                StringUtil.copyPartialMatches(args.last(), levels, completions)
+                return completions
+            }
+        }
+
         StringUtil.copyPartialMatches(args.joinToString(" "), names, completions)
 
-        if (args.size > 1) { // Remove all previous words from the candidate of completions
-            val finishedArgs = args.toMutableList()
-            finishedArgs.drop(args.size - 1)
-            val prefix = finishedArgs.joinToString(" ")
+        if (args.size > 1) {
+            val prefix = args.dropLast(1).joinToString(" ") + " "
+            val trimmed = completions.mapNotNull { completion ->
+                if (completion.startsWith(prefix, ignoreCase = true)) {
+                    completion.substring(prefix.length)
+                } else null
+            }
             completions.clear()
-            completions.stream().map { it.removePrefix(prefix).trim() }
+            completions.addAll(trimmed)
         }
 
         completions.sort()
