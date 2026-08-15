@@ -6,6 +6,7 @@ import com.willfp.eco.core.recipe.parts.EmptyTestableItem
 import com.willfp.eco.util.NumberUtils
 import com.willfp.eco.util.randDouble
 import com.willfp.ecoenchants.enchant.EcoEnchants
+import com.willfp.ecoenchants.enchant.infiniteIfNegative
 import com.willfp.ecoenchants.plugin
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
@@ -132,9 +133,13 @@ object EnchantingTableSupport : Listener {
         toAdd.forEach(event.enchantsToAdd::putIfAbsent)
 
         if (toAdd.isEmpty() && isExtraEnchantable) {
-            toAdd[Enchantment.UNBREAKING] =
-                ExtraItemSupport.currentlyEnchantingExtraItem[player.uniqueId]!![event.whichButton()]
-            ExtraItemSupport.currentlyEnchantingExtraItem.remove(player.uniqueId)
+            val extraLevels = ExtraItemSupport.currentlyEnchantingExtraItem.remove(player.uniqueId)
+            if (extraLevels != null) {
+                toAdd[Enchantment.UNBREAKING] = extraLevels[event.whichButton()]
+            } else {
+                event.isCancelled = true
+                return
+            }
         }
 
         // I remember writing this back in 8.x.x and deleting it during the recode
