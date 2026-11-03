@@ -2,9 +2,10 @@ name: ${pluginName}
 version: ${version}
 main: com.willfp.ecoenchants.EcoEnchantsPlugin
 api-version: 1.21.8
-authors: [ Auxilor ]
+authors: [ Auxilor, Exanthiax, Callum ]
 website: willfp.com
 load: STARTUP
+folia-supported: true
 depend:
   - eco
   - libreforge
@@ -39,6 +40,7 @@ permissions:
       ecoenchants.command.ecoenchants: true
       ecoenchants.command.toggledescriptions: true
       ecoenchants.command.giverandombook: true
+      ecoenchants.command.givebook: true
       ecoenchants.command.enchantinfo: true
       ecoenchants.command.gui: true
       ecoenchants.command.enchant: true
@@ -56,6 +58,9 @@ permissions:
     default: op
   ecoenchants.command.giverandombook:
     description: Allows giving random books
+    default: op
+  ecoenchants.command.givebook:
+    description: Allows giving enchanted books
     default: op
   ecoenchants.command.ecoenchants:
     description: Allows the use of /ecoenchants.

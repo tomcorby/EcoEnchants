@@ -6,6 +6,7 @@ import com.willfp.eco.core.bstats.EcoMetricsChart
 import com.willfp.eco.core.command.impl.PluginCommand
 import com.willfp.eco.core.display.DisplayModule
 import com.willfp.eco.core.dragdrop.DragAndDropHandlers
+import com.willfp.eco.core.enchant.CustomEnchantments
 import com.willfp.eco.core.integrations.IntegrationLoader
 import com.willfp.ecoenchants.commands.CommandEcoEnchants
 import com.willfp.ecoenchants.commands.CommandEnchant
@@ -23,12 +24,13 @@ import com.willfp.ecoenchants.enchant.EcoEnchantLevel
 import com.willfp.ecoenchants.enchant.EcoEnchants
 import com.willfp.ecoenchants.enchant.EnchantGUI
 import com.willfp.ecoenchants.enchant.LoreConversion
-import com.willfp.ecoenchants.enchant.registration.EnchantmentRegisterer
-import com.willfp.ecoenchants.enchant.registration.ModernEnchantmentRegistererProxy
+import com.willfp.ecoenchants.enchant.VanillaEnchantmentOverridesYml
 import com.willfp.ecoenchants.integrations.EnchantRegistrations
 import com.willfp.ecoenchants.integrations.plugins.CMIIntegration
 import com.willfp.ecoenchants.integrations.plugins.EssentialsIntegration
 import com.willfp.ecoenchants.libreforge.EffectApplyRandomEnchant
+import com.willfp.ecoenchants.libreforge.EffectRemoveThisEnchant
+import com.willfp.ecoenchants.mechanics.AnvilRequirementSupport
 import com.willfp.ecoenchants.mechanics.EcoEnchantsAnvilHandler
 import com.willfp.ecoenchants.mechanics.EnchantingTableSupport
 import com.willfp.ecoenchants.mechanics.ExtraItemSupport
@@ -36,18 +38,15 @@ import com.willfp.ecoenchants.mechanics.GrindstoneSupport
 import com.willfp.ecoenchants.mechanics.LootSupport
 import com.willfp.ecoenchants.mechanics.VillagerSupport
 import com.willfp.ecoenchants.rarity.EnchantmentRarities
-import com.willfp.ecoenchants.target.EnchantFinder
-import com.willfp.ecoenchants.target.EnchantFinder.clearEnchantmentCache
+import com.willfp.ecoenchants.target.EnchantHolderProvider
 import com.willfp.ecoenchants.target.EnchantmentTargets
 import com.willfp.ecoenchants.type.EnchantmentTypes
 import com.willfp.libreforge.NamedValue
 import com.willfp.libreforge.effects.Effects
 import com.willfp.libreforge.loader.LibreforgePlugin
 import com.willfp.libreforge.loader.configs.ConfigCategory
-import com.willfp.libreforge.registerHolderPlaceholderProvider
 import com.willfp.libreforge.registerHolderProvider
-import com.willfp.libreforge.registerSpecificRefreshFunction
-import org.bukkit.entity.LivingEntity
+import com.willfp.libreforge.registerHolderPlaceholderProvider
 import org.bukkit.event.Listener
 
 internal lateinit var plugin: EcoEnchantsPlugin
@@ -61,12 +60,11 @@ class EcoEnchantsPlugin : LibreforgePlugin() {
     var isLoaded = false
         private set
 
-    val enchantmentRegisterer: EnchantmentRegisterer = this.getProxy(ModernEnchantmentRegistererProxy::class.java)
-
     init {
         plugin = this
 
-        plugin.getProxy(ModernEnchantmentRegistererProxy::class.java).replaceRegistry()
+        CustomEnchantments.setVanillaOverrides(VanillaEnchantmentOverridesYml)
+        CustomEnchantments.unfreezeRegistry()
     }
 
     override fun loadConfigCategories(): List<ConfigCategory> {
@@ -77,12 +75,9 @@ class EcoEnchantsPlugin : LibreforgePlugin() {
 
     override fun handleEnable() {
         Effects.register(EffectApplyRandomEnchant)
+        Effects.register(EffectRemoveThisEnchant)
 
-        registerHolderProvider(EnchantFinder.toHolderProvider())
-
-        registerSpecificRefreshFunction<LivingEntity> {
-            it.clearEnchantmentCache()
-        }
+        registerHolderProvider(EnchantHolderProvider)
 
         registerHolderPlaceholderProvider<EcoEnchantLevel> { it, _ ->
             listOf(
@@ -100,7 +95,7 @@ class EcoEnchantsPlugin : LibreforgePlugin() {
     override fun handleAfterLoad() {
         isLoaded = true
 
-        plugin.getProxy(ModernEnchantmentRegistererProxy::class.java).replaceRegistry()
+        CustomEnchantments.unfreezeRegistry()
     }
 
     override fun handleReload() {
@@ -136,7 +131,8 @@ class EcoEnchantsPlugin : LibreforgePlugin() {
             EnchantingTableSupport,
             LootSupport,
             LoreConversion,
-            GrindstoneSupport
+            GrindstoneSupport,
+            AnvilRequirementSupport
         )
     }
 

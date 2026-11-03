@@ -4,9 +4,11 @@ import com.willfp.eco.core.fast.fast
 import com.willfp.eco.util.NumberUtils
 import com.willfp.ecoenchants.enchant.EcoEnchants
 import com.willfp.ecoenchants.enchant.infiniteIfNegative
+import com.willfp.ecoenchants.enchant.removeEnchantsReplacedBy
 import com.willfp.ecoenchants.plugin
 import com.willfp.ecoenchants.target.EnchantmentTargets.isEnchantable
 import org.bukkit.Material
+import org.bukkit.enchantments.Enchantment
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.VillagerAcquireTradeEvent
@@ -17,7 +19,7 @@ import kotlin.math.ceil
 object VillagerSupport : Listener {
     @EventHandler
     fun onTrade(event: VillagerAcquireTradeEvent) {
-        if (!plugin.configYml.getBool("villager.enabled")) {
+        if (!plugin.configYml.getBool("villager.enabled") || plugin.isDisabledIn(event.entity.world)) {
             return
         }
 
@@ -28,6 +30,7 @@ object VillagerSupport : Listener {
         }
 
         val enchants = result.fast().getEnchants(true)
+        val added = mutableListOf<Enchantment>()
 
         if (NumberUtils.randFloat(0.0, 100.0) < plugin.configYml.getDouble("villager.pass-through-chance")) {
             return
@@ -46,7 +49,7 @@ object VillagerSupport : Listener {
                 continue
             }
 
-            if (!enchantment.canEnchantItem(result, enchants.keys)) {
+            if (!enchantment.canEnchantItem(result, enchants)) {
                 continue
             }
 
@@ -54,7 +57,7 @@ object VillagerSupport : Listener {
                 continue
             }
 
-            if (enchants.size > plugin.configYml.getInt("anvil.enchant-limit").infiniteIfNegative()) {
+            if (enchants.size >= plugin.configYml.getInt("anvil.enchant-limit").infiniteIfNegative()) {
                 break
             }
 
@@ -66,21 +69,24 @@ object VillagerSupport : Listener {
             val levelPart3 = NumberUtils.bias(levelPart2, enchantment.type.highLevelBias)
             val level = ceil(levelPart3 * maxLevel).coerceIn(1.0..maxLevel.toDouble()).toInt()
 
-            multiplier /= plugin.configYml.getDouble("villager.reduction")
+            multiplier /= plugin.configYml.getDouble("villager.reduction").takeIf { it > 0 } ?: 1.0
 
             if (result.type == Material.ENCHANTED_BOOK) {
-                // Only allow one enchantment
+                // Book trades are intentionally limited to exactly one enchantment, so any
+                // enchantment the trade originally offered is discarded when a custom one rolls.
                 enchants.clear()
                 enchants[enchantment.enchantment] = level
                 break
             } else {
                 enchants[enchantment.enchantment] = level
+                added += enchantment.enchantment
             }
         }
 
         val meta = result.itemMeta
         if (meta is EnchantmentStorageMeta) {
-            // Remove existing enchants
+            // Cleared so the book ends up with only the enchantments rolled above, keeping
+            // book trades to a single enchantment (see the comment on enchants.clear() above)
             for (enchant in meta.storedEnchants.keys) {
                 meta.removeStoredEnchant(enchant)
             }
@@ -94,6 +100,7 @@ object VillagerSupport : Listener {
                 meta.addEnchant(enchant, level, true)
             }
         }
+        meta.removeEnchantsReplacedBy(added)
         result.itemMeta = meta
 
         val recipe = MerchantRecipe(

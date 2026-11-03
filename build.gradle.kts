@@ -12,6 +12,7 @@ plugins {
 group = "com.willfp"
 version = findProperty("version")!!
 val libreforgeVersion = findProperty("libreforge-version")
+val ecoApiVersion = findProperty("eco-api-version")
 val ecoVersion = findProperty("eco-version")
 
 base {
@@ -20,12 +21,6 @@ base {
 
 dependencies {
     implementation(project(":eco-core:core-plugin"))
-    implementation(project(":eco-core:core-nms:v1_21_8", configuration = "reobf"))
-    implementation(project(":eco-core:core-nms:v1_21_10", configuration = "reobf"))
-    implementation(project(":eco-core:core-nms:v1_21_11", configuration = "reobf"))
-    implementation(project(":eco-core:core-nms:v26_1_1", configuration = "shadow"))
-    implementation(project(":eco-core:core-nms:v26_1_2", configuration = "shadow"))
-    implementation(project(":eco-core:core-nms:v26_2", configuration = "shadow"))
 }
 
 publishing {
@@ -157,6 +152,7 @@ allprojects {
                 expand(
                     "version" to project.version,
                     "libreforgeVersion" to libreforgeVersion!!,
+                    "ecoApiVersion" to ecoApiVersion!!,
                     "pluginName" to rootProject.name
                 )
             }

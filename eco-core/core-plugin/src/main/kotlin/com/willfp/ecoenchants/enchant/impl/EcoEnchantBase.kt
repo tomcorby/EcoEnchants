@@ -8,6 +8,7 @@ import com.willfp.ecoenchants.display.getFormattedName
 import com.willfp.ecoenchants.enchant.DiscoveryType
 import com.willfp.ecoenchants.enchant.EcoEnchant
 import com.willfp.ecoenchants.enchant.EcoEnchantLevel
+import com.willfp.ecoenchants.enchant.EnchantmentRequirement
 import com.willfp.ecoenchants.rarity.EnchantmentRarities
 import com.willfp.ecoenchants.rarity.EnchantmentRarity
 import com.willfp.ecoenchants.target.EnchantmentTargets
@@ -22,6 +23,7 @@ import org.bukkit.enchantments.Enchantment
 import org.bukkit.permissions.Permission
 import org.bukkit.permissions.PermissionDefault
 import org.jetbrains.annotations.ApiStatus.Internal
+import java.util.concurrent.ConcurrentHashMap
 
 abstract class EcoEnchantBase(
     final override val id: String,
@@ -35,11 +37,9 @@ abstract class EcoEnchantBase(
     override lateinit var enchantment: Enchantment
         @Internal set
 
-    private val levels = mutableMapOf<Int, EcoEnchantLevel>()
+    private val levels = ConcurrentHashMap<Int, EcoEnchantLevel>()
 
     private val conflictIds = config.getStrings("conflicts").toSet()
-
-    private val requiredIds = config.getStrings("required").toSet()
 
     override val enchantmentKey = NamespacedKey.minecraft(id)
 
@@ -53,19 +53,30 @@ abstract class EcoEnchantBase(
         get() = conflictIds.containsIgnoreCase("all")
                 || conflictIds.containsIgnoreCase("everything")
 
-    override val conflicts = config.getStrings("conflicts")
-        .mapNotNull {
-            @Suppress("DEPRECATION")
-            Enchantment.getByKey(NamespacedKey.minecraft(it))
-        }
-        .toSet()
+    override val conflicts by lazy {
+        config.getStrings("conflicts")
+            .mapNotNull {
+                @Suppress("DEPRECATION")
+                Enchantment.getByKey(NamespacedKey.minecraft(it))
+            }
+            .toSet()
+    }
 
-    override val required = config.getStrings("required")
-        .mapNotNull {
-            @Suppress("DEPRECATION")
-            Enchantment.getByKey(NamespacedKey.minecraft(it))
+    override val requirements = config.getStrings("required")
+        .map { entry ->
+            EnchantmentRequirement.parse(entry) ?: EnchantmentRequirement(entry).also {
+                plugin.logger.warning(
+                    "Invalid requirement '$entry' in enchantment $id, expected id[:level] [remove]. " +
+                            "The enchantment can't be applied until this is fixed."
+                )
+            }
         }
-        .toSet()
+
+    override val required by lazy {
+        requirements
+            .mapNotNull { it.enchantment }
+            .toSet()
+    }
 
     override val targets = config.getStrings("targets")
         .mapNotNull { EnchantmentTargets[it] }
@@ -139,8 +150,8 @@ abstract class EcoEnchantBase(
     protected open fun loadConfig(): Config? = null
 
     override fun getLevel(level: Int): EcoEnchantLevel {
-        return levels.getOrPut(level) {
-            createLevel(level)
+        return levels.computeIfAbsent(level) {
+            createLevel(it)
         }
     }
 
@@ -148,12 +159,6 @@ abstract class EcoEnchantBase(
 
     override fun conflictsWithDirectly(other: Enchantment): Boolean {
         return other.key.key in conflictIds || this.conflictsWithEverything
-    }
-
-    override fun hasRequiredEnchantments(other: Collection<Enchantment>): Boolean {
-        return requiredIds.all { requiredId ->
-            other.any { enchantment -> enchantment.key.key.equals(requiredId, ignoreCase = true) }
-        }
     }
 
     final override fun equals(other: Any?): Boolean {
